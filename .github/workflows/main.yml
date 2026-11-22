@@ -1,0 +1,40 @@
+name: Ubuntu VPS (6 Hours) + Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ubuntu-vps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Configure SSH & Root Password
+        run: |
+          echo "root:MR.English2008" | sudo chpasswd
+          sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+          sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+          sudo systemctl restart ssh
+
+      - name: Install and Start Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --hostname=gh-vps-$GITHUB_RUN_ID
+          
+          TS_IP=$(tailscale ip -4)
+          echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
+
+      - name: Show VPS Access & Keep Alive
+        run: |
+          echo "=============================="
+          echo "=== UBUNTU VPS ACCESS ==="
+          echo "IP Address : $TAILSCALE_IP"
+          echo "Username   : root"
+          echo "Password   : MR.English2008"
+          echo "SSH Command: ssh root@$TAILSCALE_IP"
+          echo "=============================="
+
+          while true; do
+            echo "[$(date)] VPS Active - IP: $TAILSCALE_IP"
+            sleep 300
+          done
